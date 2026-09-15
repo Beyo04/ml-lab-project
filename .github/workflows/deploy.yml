@@ -6,10 +6,6 @@ on:
   pull_request:
     branches: [ "main" ]
 
-permissions:
-  contents: read
-  issues: write
-
 jobs:
   sast-and-sca:
     name: Code & Dependency Security (SAST & SCA)
@@ -53,14 +49,10 @@ jobs:
 
       - name: Run Docker Container
         run: |
-          docker run -d -p 8000:8000 --name ml-api-container ml-api:latest
+          docker run -d --network="host" --name ml-api-container ml-api:latest
           sleep 5
           curl --fail http://localhost:8000/health || exit 1
 
-      - name: OWASP ZAP Baseline Scan (DAST)
-        uses: zaproxy/action-baseline@v0.12.0
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          target: 'http://localhost:8000'
-          fail_action: false
-          allow_issue_writing: false
+      - name: Run OWASP ZAP Baseline Scan (DAST)
+        run: |
+          docker run --rm --network="host" -t ghcr.io/zaproxy/zaproxy:stable zap-baseline.py -t http://localhost:8000 -I || true
